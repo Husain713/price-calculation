@@ -1076,7 +1076,7 @@ app.post("/update-gold-price-final02", async (req, res) => {
 
 //app.listen(process.env.PORT || 3000, ()=>console.log("Server running"));
 //app.use(express.static("public"));
-
+module.exports = app;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
@@ -1460,4 +1460,5 @@ app.get("/product", async (req, res) => {
 
   }
 });
+
 
