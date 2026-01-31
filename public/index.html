@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Price Update</title>
+  <style>
+    body { font-family: Arial; padding: 30px; background: #f5f5f5; }
+    input, button { padding: 10px; margin: 5px 0; width: 250px; }
+    button { cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; background: #fff; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #eee; }
+  </style>
+</head>
+<body>
+
+  
+<progress id="bar" value="0" max="100"></progress>
+<div id="info"></div>
+
+
+
+<h2>Update Variant Prices</h2>
+
+New Gold Price: <input id="goldPrice" type="number" placeholder="Gold Price" value="13000"><br>
+Making Cost: <input id="makingCost" type="number" placeholder="Making Cost" value="2000"><br>
+Diamond Q1 (HI SI) Price: <input id="diaQ1" type="number" placeholder="Diamond Q1 Price" value="12000"><br>
+Diamond Q2 (GH I1-I2) Pric: <input id="diaQ2" type="number" placeholder="Diamond Q2 Price" value="8000"><br>
+Color Stone price: <input id="stonePrice" type="number" placeholder="Colour Stone Price" value="3000"><br>
+Certification Cost: <input id="certification" type="number" placeholder="Certification Cost" value="1500"><br>
+
+<button onclick="runUpdate()">Run Price Update</button>
+
+<p id="status"></p>
+<table id="resultTable" style="display:none;">
+  <thead>
+    <tr>
+      <th>Sr.No</th> 
+      <th>Product ID</th>
+      <th>Product</th>
+      <th>Variant</th>
+      <th>Options</th>
+      <th>Old Price</th>
+      <th>Final Price</th>
+      <th>Breakdown</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+async function runUpdate() {
+  document.getElementById("status").innerText = "Updating...";
+
+  const body = {
+    newGoldPrice: Number(document.getElementById("goldPrice").value),
+    mkcost: Number(document.getElementById("makingCost").value),
+    diaq1: Number(document.getElementById("diaQ1").value),
+    diaq2: Number(document.getElementById("diaQ2").value),
+    stonePrice: Number(document.getElementById("stonePrice").value),
+    crtfConst: Number(document.getElementById("certification").value),
+  };
+
+  const res = await fetch("/update-gold-price-final", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  const data = await res.json();
+  console.log("Response data:", data);
+  document.getElementById("status").innerText = data;
+  if (!data.success) {
+    document.getElementById("status").innerText = "Update failed";
+    return;
+  }
+
+  console.log("Update result:", data);
+
+  document.getElementById("status").innerText =
+    `Updated ${data.variants.length} variants`;
+
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
+  let lastResults = [];   
+   
+  const button = document.createElement("button");
+    button.innerText = "Export CSV";
+    button.onclick = exportCSV;
+
+  data.variants.forEach((v, index) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${index}</td>
+      <td>${v.productId}</td>
+      <td>${v.productTitle}</td>
+      <td>${v.variantId}</td>
+      <td>${v.options}</td>
+      <td>₹${v.oldPrice}</td>
+      <td>₹${v.finalPrice}</td>
+      <td>
+        Metal: ₹${v.details.metalCost}<br>
+        Diamond: ₹${v.details.diamondCost}<br>
+        Making: ₹${v.details.makingCharge}<br>
+        Stone: ₹${v.details.stoneCost}<br>
+        Cert: ₹${v.details.certification}
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+   lastResults = data.variants;
+
+   document.body.insertBefore(button, document.getElementById("resultTable"));  
+   document.getElementById("resultTable").style.display = "table";
+}
+
+
+
+function exportCSV() {
+   
+  if (!lastResults.length) {
+    alert("No data to export");
+    return;
+  }
+
+  const headers = [
+    "S.No",
+    "Product ID",
+    "Variant ID",
+    "Options",
+    "Metal Weight",
+    "Diamond Weight",
+    "Stone Weight",
+    "Metal Cost",
+    "Diamond Cost",
+    "Stone Cost",
+    "Making Charge",
+    "Certification",
+    "Old Price",
+    "Final Price"
+  ];
+
+  const rows = lastResults.map((v, index) => [
+    index,
+    v.productId,
+    v.variantId,
+    v.options,
+    v.mWeight,
+    v.dWeight,
+    v.sWeight,
+    v.details.metalCost,
+    v.details.diamondCost,
+    v.details.stoneCost,
+    v.details.makingCharge,
+    v.details.certification,
+    v.oldPrice,
+    v.finalPrice
+  ]);
+
+  let csv = headers.join(",") + "\n";
+
+  rows.forEach(row => {
+    csv += row.map(val => `"${val}"`).join(",") + "\n";
+  });
+
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "price-update-results.csv";
+  document.body.appendChild(a);
+  a.click();
+
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+</script>
+
+
+<script>
+async function poll() {
+  const r = await fetch("/update-gold-price/status");
+  const s = await r.json();
+
+  if (!s.total) return;
+
+  const percent = Math.round((s.processed / s.total) * 100);
+  bar.value = percent;
+  info.innerText = `${percent}% (${s.processed}/${s.total})`;
+
+  if (s.running) setTimeout(poll, 1000);
+}
+poll();
+</script>
+</body>
+</html>

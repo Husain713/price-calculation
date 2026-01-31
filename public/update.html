@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+    body { font-family: Arial; padding: 30px; background: #f5f5f5; }
+    input, button { padding: 10px; margin: 5px 0; width: 250px; }
+    button { cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; background: #fff; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #eee; }
+  </style>
+</head>
+<body>
+
+    
+<h2>Update Variant Prices</h2>
+
+New Gold Price: <input id="goldPrice" type="number" placeholder="Gold Price" value="13000"><br>
+Making Cost: <input id="makingCost" type="number" placeholder="Making Cost" value="2000"><br>
+Diamond Q1 (HI SI) Price: <input id="diaQ1" type="number" placeholder="Diamond Q1 Price" value="12000"><br>
+Diamond Q2 (GH I1-I2) Pric: <input id="diaQ2" type="number" placeholder="Diamond Q2 Price" value="8000"><br>
+Color Stone price: <input id="stonePrice" type="number" placeholder="Colour Stone Price" value="3000"><br>
+Certification Cost: <input id="certification" type="number" placeholder="Certification Cost" value="1500"><br>
+
+<!-- <button onclick="runUpdate()">Run Price Update</button> -->
+
+
+<button onclick="start()">Update Prices</button>
+<p id="status"></p>
+<!-- <progress id="bar" value="0" max="100"></progress>
+<div id="info"></div> -->
+
+<table id="resultTable" border="1">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Product ID</th>
+      <th>Product</th>
+      <th>Variant ID</th>
+      <th>Options</th>
+      <th>Old</th>
+      <th>New</th>
+      <th>Details</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+async function start() {
+
+//   await fetch("/update-gold-price-final02", {
+
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify({
+//       newGoldPrice: 13000,
+//       mkcost: 2000,
+//       diaq1: 12000,
+//       diaq2: 8000,
+//       stonePrice: 3000,
+//       crtfConst: 1500
+//     })
+//   });
+document.getElementById("status").innerText = "Updating...";
+
+  const body = {
+    newGoldPrice: Number(document.getElementById("goldPrice").value),
+    mkcost: Number(document.getElementById("makingCost").value),
+    diaq1: Number(document.getElementById("diaQ1").value),
+    diaq2: Number(document.getElementById("diaQ2").value),
+    stonePrice: Number(document.getElementById("stonePrice").value),
+    crtfConst: Number(document.getElementById("certification").value),
+  };
+
+  const res = await fetch("/update-gold-price-final02", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  poll();
+}
+
+async function poll() {
+  const res = await fetch("/update-gold-price-final02/variants");
+  const data = await res.json();
+
+  console.log("Poll data:", data);
+
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
+
+  data.variants.forEach((v, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${v.productId}</td>
+      <td>${v.productTitle}</td>
+      <td>${v.variantId}</td>
+      <td>${v.options}</td>
+      <td>₹${v.oldPrice}</td>
+      <td>₹${v.finalPrice}</td>
+      <td>
+        Metal: ₹${v.details.metalCost}<br>
+        Diamond: ₹${v.details.diamondCost}<br>
+        Making: ₹${v.details.makingCharge}<br>
+        Stone: ₹${v.details.stoneCost}<br>
+        Cert: ₹${v.details.certification}
+      </td>
+      <td>${v.status === "success" ? "✅" : v.status === "failed" ? "❌" : "⏳"}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  // const percent = Math.round((data.processed / data.variants.length) * 100);
+  // bar.value = percent;
+  // info.innerText = `${percent}% (${data.processed}/${data.variants.length})`;
+
+  if (data.running) setTimeout(poll, 1000);
+}
+</script>
+
+    
+</body>
+</html>
